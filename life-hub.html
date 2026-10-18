@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Life Hub" />
+<meta name="theme-color" content="#E9E0CF" />
+<title>Life Hub</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #0F0F0F; --surface: #141414; --border: #1E1E1E; --line: #1A1A1A;
+    --text: #F0EDE8; --soft: #CCC; --dim: #999; --muted: #666; --faint: #444;
+    --faith: #8B5CF6; --quant: #2979C8; --music: #E07B39; --gym: #4CAF50;
+    --rel: #D64F8A; --work: #C49A00; --grey: #9E9E9E;
+    --course: #7FA6E6; --build: #5CC4B9; --practice: #E0A956; --career: #B49AE6;
+    --mono: 'Courier New', ui-monospace, monospace;
+    --nav-h: 64px;
+  }
+  html, body { background: var(--bg); }
+  body {
+    color: var(--text);
+    font-family: Georgia, 'Times New Roman', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 24px);
+  }
+  button { -webkit-appearance: none; font: inherit; color: inherit; }
+  a { color: inherit; }
+
+  /* ---------- shared ---------- */
+  .view { display: none; }
+  .view.active { display: block; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .view.active { animation: none; } }
+
+  .hdr {
+    padding: max(env(safe-area-inset-top, 0px), 44px) 20px 22px;
+    border-bottom: 1px solid #222;
+    position: relative; overflow: hidden;
+  }
+  .hdr-glow { position: absolute; inset: 0; pointer-events: none; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px; position: relative;
+  }
+  .hdr h1 { font-size: clamp(26px, 7vw, 40px); font-weight: 400; letter-spacing: -.5px; line-height: 1.1; position: relative; }
+  .hdr-sub { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: #888; margin-top: 6px; position: relative; }
+
+  .section-label {
+    padding: 18px 20px 8px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--faint);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .stack { padding: 0 20px; display: flex; flex-direction: column; gap: 7px; }
+
+  .block {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 7px;
+    padding: 13px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .block-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .b-note { font-size: 13.5px; line-height: 1.3; margin-bottom: 2px; }
+  .b-time { font-family: var(--mono); font-size: 10px; color: #555; letter-spacing: .5px; }
+  .tag { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; flex-shrink: 0; opacity: .85; text-align: right; }
+
+  .chips { display: flex; gap: 5px; padding: 18px 20px 0; overflow-x: auto; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex-shrink: 0; padding: 9px 13px; border-radius: 5px; border: 1px solid #222; background: transparent;
+    color: #555; font-family: var(--mono); font-size: 10px; letter-spacing: 2px; cursor: pointer; position: relative;
+  }
+  .chip.active { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 700; }
+  .chip .ind { position: absolute; top: 4px; right: 4px; width: 5px; height: 5px; border-radius: 50%; }
+
+  .pills { display: flex; gap: 6px; padding: 18px 20px 0; overflow-x: auto; scrollbar-width: none; }
+  .pills::-webkit-scrollbar { display: none; }
+  .pill {
+    flex-shrink: 0; padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent;
+    color: #555; font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+  }
+  .pill.active { color: var(--bg); border-color: transparent; font-weight: 700; }
+
+  .card { margin: 0 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+
+  .bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 2px; transition: width .35s ease; }
+
+  .ghost-btn {
+    display: block; margin: 16px 20px 0; width: calc(100% - 40px); padding: 12px; background: transparent;
+    border: 1px solid var(--border); border-radius: 6px; color: #555;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+  }
+
+  /* ---------- bottom nav ---------- */
+  .nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    background: rgba(15,15,15,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid #222;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    display: flex;
+  }
+  .nav button {
+    flex: 1; height: var(--nav-h); background: transparent; border: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+    color: #555; transition: color .2s;
+  }
+  .nav .ico { font-size: 17px; line-height: 1; height: 18px; }
+  .nav .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .nav button.active { color: var(--text); }
+  .nav button.active .ico { color: var(--accent, var(--text)); }
+
+  /* ---------- today ---------- */
+  .progress { padding: 18px 20px 4px; }
+  .progress p { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 8px; }
+  .check {
+    width: 100%; text-align: left; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 15px; display: flex; align-items: center; gap: 13px; transition: opacity .2s;
+  }
+  .check .circ {
+    width: 24px; height: 24px; border-radius: 50%; border: 2px solid; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--bg);
+  }
+  .check.done { opacity: .45; }
+  .check.done .b-note { text-decoration: line-through; }
+  .banner {
+    margin: 18px 20px 0; padding: 18px; text-align: center; border-radius: 8px;
+    background: rgba(139,92,246,.08); border: 1px solid rgba(139,92,246,.25);
+  }
+  .banner .big { font-size: 22px; margin-bottom: 6px; }
+  .banner .t { color: var(--faith); font-size: 14px; }
+  .banner .s { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ---------- week ---------- */
+  .day-head { padding: 20px 20px 0; }
+  .day-head h2 { font-size: 21px; font-weight: 400; margin-bottom: 7px; }
+  .badge { display: inline-block; font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; }
+  .hl-music { background: rgba(224,123,57,.08) !important; border-color: rgba(224,123,57,.3) !important; }
+  .hl-faith { background: rgba(139,92,246,.08) !important; border-color: rgba(139,92,246,.3) !important; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 16px; border-top: 1px solid var(--line); }
+  .row:first-child { border-top: none; }
+  .row-l { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--soft); }
+  .row-r { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: right; max-width: 55%; }
+
+  /* ---------- prep ---------- */
+  .stats { display: flex; gap: 26px; padding: 18px 20px 12px; }
+  .stat b { display: block; font-size: 26px; font-weight: 400; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stat span { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 14px 20px 0; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); }
+  .rhythm { margin: 14px 20px 0; padding: 12px 14px; border-radius: 8px; background: rgba(41,121,200,.08); border: 1px solid rgba(41,121,200,.2); font-size: 12.5px; color: var(--soft); display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .rhythm b { color: var(--text); font-weight: 400; }
+  .week {
+    margin: 10px 20px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 15px 16px 6px;
+  }
+  .week.now { border-color: var(--quant); box-shadow: 0 0 0 1px var(--quant); }
+  .wk-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 4px; }
+  .wk-n { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--quant); }
+  .wk-now { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; background: var(--quant); color: var(--text); border-radius: 99px; padding: 2px 8px; }
+  .wk-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+  .wk-title { font-size: 17px; font-weight: 400; margin-bottom: 4px; }
+  .wk-note { font-size: 12.5px; color: var(--muted); font-style: italic; margin-bottom: 4px; }
+  .task { display: grid; grid-template-columns: 22px 1fr; gap: 11px; padding: 10px 0; border-top: 1px solid var(--line); cursor: pointer; align-items: start; }
+  .task:first-of-type { border-top: none; }
+  .task input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--gym); cursor: pointer; }
+  .t-tag { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+  .t-text { font-size: 13.5px; line-height: 1.4; }
+  .task.done .t-text { color: var(--muted); text-decoration: line-through; text-decoration-color: #333; }
+  .foot { padding: 18px 20px 0; font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: .5px; }
+
+  /* ---------- commute ---------- */
+  .seg { display: flex; margin: 18px 20px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; padding: 12px; background: transparent; border: none; cursor: pointer; color: #555; font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .seg button .e { font-size: 16px; }
+  .seg button.active { color: var(--text); }
+  .pick-top { padding: 16px 18px 14px; border-bottom: 1px solid var(--border); }
+  .pick-type { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .pick-title { font-size: 17px; line-height: 1.3; margin-bottom: 3px; }
+  .pick-by { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .pick-bot { padding: 13px 18px; display: flex; align-items: center; gap: 12px; }
+  .pick-why { font-size: 12.5px; color: #888; line-height: 1.45; flex: 1; }
+  .open { flex-shrink: 0; padding: 8px 14px; border-radius: 6px; font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; }
+  .lib { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-decoration: none; }
+  .lib-sub { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+  .lib-tag { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 7px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ---------- systems ---------- */
+  .intro { margin: 20px 20px 4px; font-size: 14px; color: #AAA; line-height: 1.6; font-style: italic; }
+  .sys { margin: 10px 20px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .sys-h { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 12px; }
+  .sys-n { font-family: var(--mono); font-size: 11px; color: #555; }
+  .sys-t { font-size: 16px; }
+  .sys-b { padding: 12px 16px 14px; }
+  .sys-d { font-size: 13px; color: var(--dim); line-height: 1.55; }
+  .sys ul { list-style: none; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+  .sys li { font-size: 13px; color: var(--soft); line-height: 1.5; padding-left: 16px; position: relative; }
+  .sys li::before { content: '›'; position: absolute; left: 0; color: #555; }
+  .sys li:first-child { margin-top: 2px; }
+  .say { color: #888; font-style: italic; }
+  table.floors { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .floors th { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #555; text-align: left; font-weight: 400; padding-bottom: 8px; }
+  .floors td { font-size: 12px; color: var(--soft); padding: 9px 8px 9px 0; border-top: 1px solid var(--border); vertical-align: top; line-height: 1.4; }
+  .floors td:first-child { white-space: nowrap; }
+  .floors td.f { color: var(--text); }
+  .core { margin: 18px 20px 0; padding: 18px; text-align: center; border-radius: 8px; background: rgba(139,92,246,.08); border: 1px solid rgba(139,92,246,.25); }
+  .core small { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--faith); margin-bottom: 8px; }
+  .core p { font-size: 15px; }
+</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style id="theme">
+/* ===== CREAM STUDIO — vintage cream-enamel console, ink lettering, oxblood lamps ===== */
+:root {
+  --bg: #E9E0CF; --surface: #FAF5EA; --border: #CDBFA6; --line: #E2D7C4;
+  --text: #2A221A; --soft: #4A3F33; --dim: #75695A; --muted: #8F8270; --faint: #B9AC96;
+  --ox: #8A2E28; --ox-lit: #B23A2E; --ink: #2A221A;
+  --edge: #BFAF94; --drop: #B5A486;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --serif: 'Newsreader', Georgia, serif;
+  --display: 'Fraunces', Georgia, serif;
+  --panel: linear-gradient(180deg, #FCF8EF 0%, #F3ECDE 100%);
+  --raised: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 0 rgba(120,95,60,.12), 0 2px 0 var(--drop), 0 4px 10px -4px rgba(90,65,35,.25);
+  --pressed: inset 0 2px 5px rgba(90,65,35,.28), inset 0 0 0 1px rgba(120,95,60,.15);
+}
+html, body { background: var(--bg); }
+body {
+  font-family: var(--serif); font-size: 15.5px; color: var(--text);
+  background-image: radial-gradient(rgba(90,65,35,.06) 1px, transparent 1px);
+  background-size: 4px 4px;
+}
+
+/* ---- header: screwed-on faceplate ---- */
+.hdr {
+  margin: 12px 12px 0; padding: max(env(safe-area-inset-top, 0px), 40px) 20px 18px;
+  background: var(--panel); border: 1px solid var(--edge); border-radius: 18px; box-shadow: var(--raised);
+  text-align: center;
+}
+.hdr::before, .hdr::after {
+  content: ''; position: absolute; top: 13px; width: 8px; height: 8px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #E8DDC9, #A8977A);
+  box-shadow: inset 0 0 0 1px rgba(90,65,35,.35), 0 1px 0 rgba(255,255,255,.8);
+}
+.hdr::before { left: 13px; } .hdr::after { right: 13px; }
+.hdr-glow { display: none; }
+.eyebrow { font-family: var(--mono); font-size: 9.5px; letter-spacing: 3px; color: var(--ox); margin-bottom: 6px; }
+.hdr h1 { font-family: var(--display); font-weight: 400; font-style: italic; font-size: clamp(32px, 9vw, 44px); letter-spacing: -1px; line-height: 1.02; color: var(--ink); }
+.hdr-sub { font-family: var(--serif); font-style: italic; font-size: 14px; letter-spacing: 0; color: var(--muted); margin-top: 7px; }
+
+.section-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 3px; color: var(--ox); padding: 20px 22px 8px; }
+.section-label::after { height: 2px; background: repeating-linear-gradient(90deg, var(--edge) 0 2px, transparent 2px 6px); }
+
+/* ---- channel strips ---- */
+.stack { padding: 0 12px; gap: 7px; }
+.block, .check {
+  background: var(--panel) !important; border: 1px solid var(--edge) !important;
+  border-radius: 13px; box-shadow: var(--raised); padding: 14px 15px;
+}
+.b-note { font-family: var(--serif); font-size: 15.5px; color: var(--ink); line-height: 1.3; }
+.b-time { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: .5px; }
+.tag {
+  font-family: var(--mono); font-size: 8.5px; letter-spacing: 1.5px; opacity: 1;
+  padding: 4px 7px; border-radius: 5px; background: #EFE7D7; box-shadow: var(--pressed);
+}
+.hl-music .b-note, .hl-faith .b-note { font-style: italic; }
+.hl-music { box-shadow: var(--raised), 0 0 0 1.5px rgba(194,98,45,.55) !important; }
+.hl-faith { box-shadow: var(--raised), 0 0 0 1.5px rgba(110,79,176,.45) !important; }
+
+/* LED lamps with soft bloom */
+.dot { position: relative; width: 8px; height: 8px; box-shadow: inset 0 -1px 1px rgba(0,0,0,.25), 0 0 0 2px #EFE7D7, 0 0 0 3px rgba(120,95,60,.2); }
+.dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: inherit; filter: blur(5px); opacity: .45; }
+
+/* ---- hardware buttons ---- */
+.chips, .pills { padding-left: 12px; padding-right: 12px; gap: 6px; }
+.chip, .pill {
+  background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; color: var(--dim);
+  box-shadow: var(--raised); font-family: var(--mono); font-size: 10px;
+}
+.chip.active, .pill.active {
+  background: #EDE4D2 !important; color: var(--ox) !important; border-color: var(--edge);
+  box-shadow: var(--pressed); transform: translateY(1px); font-weight: 700;
+}
+.chip .ind { box-shadow: 0 0 5px currentColor; }
+
+/* ---- VU meter ---- */
+.bar { height: 12px; border-radius: 4px; background: #E6DCC9; box-shadow: var(--pressed); padding: 2px; }
+.bar i {
+  border-radius: 1px;
+  background: linear-gradient(90deg, #5A8A3C 0, #5A8A3C 58%, #C99A2E 78%, var(--ox-lit) 100%) !important;
+  background-size: calc(100vw - 48px) 100% !important;
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px);
+          mask: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px);
+}
+.progress { padding-left: 22px; padding-right: 22px; }
+.progress p { font-family: var(--mono); color: var(--ox); }
+
+/* ---- check buttons ---- */
+.check .circ {
+  border-radius: 7px; width: 26px; height: 26px; border: 1px solid var(--edge) !important;
+  background: #ECE3D1 !important; box-shadow: var(--pressed); font-size: 0;
+}
+.check.done .circ::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--ox-lit); box-shadow: 0 0 8px 2px rgba(178,58,46,.55); }
+.check.done { opacity: .6; }
+.check.done .b-note { text-decoration-color: var(--faint); }
+
+.ghost-btn {
+  margin-left: 12px; margin-right: 12px; width: calc(100% - 24px); border-radius: 11px;
+  background: var(--panel); border: 1px solid var(--edge); box-shadow: var(--raised); color: var(--ox);
+}
+.ghost-btn:active { box-shadow: var(--pressed); transform: translateY(1px); }
+.banner { margin: 16px 12px 0; border-radius: 14px; background: var(--panel); border: 1px solid var(--edge); box-shadow: var(--raised); }
+.banner .t { font-family: var(--display); font-style: italic; font-size: 22px; color: var(--ox); }
+.banner .s { font-family: var(--serif); font-style: italic; font-size: 14px; }
+
+/* ---- week ---- */
+.day-head { text-align: center; }
+.day-head h2 { font-family: var(--display); font-style: italic; font-size: 30px; }
+.badge { font-family: var(--mono); border-radius: 6px; box-shadow: var(--pressed); }
+.card { margin: 0 12px; border-radius: 15px; background: var(--panel); border: 1px solid var(--edge); box-shadow: var(--raised); }
+.row { border-top: 1px dashed var(--line); }
+.row-l { font-size: 15px; color: var(--ink); }
+.row-r { font-family: var(--serif); font-style: italic; font-size: 13px; }
+
+/* ---- prep ---- */
+.stats { justify-content: center; gap: 28px; }
+.stat { text-align: center; }
+.stat b { font-family: var(--display); font-size: 32px; color: var(--ox); }
+.stat span { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; }
+.legend { justify-content: center; }
+.legend span { font-family: var(--mono); font-size: 9.5px; }
+.rhythm {
+  margin: 14px 12px 0; border-radius: 13px; background: #E6DCC9; border: 1px solid var(--edge); box-shadow: var(--pressed);
+  color: var(--soft); font-style: italic;
+}
+.rhythm b { color: var(--ox); font-style: normal; }
+.week { margin: 10px 12px 0; border-radius: 15px; background: var(--panel); border: 1px solid var(--edge); box-shadow: var(--raised); }
+.week.now { border-color: var(--edge); box-shadow: var(--raised), 0 0 0 2px var(--ox); }
+.wk-n { font-family: var(--mono); color: var(--ox); }
+.wk-now { background: var(--ox); color: #FAF5EA; box-shadow: 0 0 10px rgba(178,58,46,.4); }
+.wk-meta { font-family: var(--mono); }
+.wk-title { font-family: var(--display); font-size: 21px; }
+.wk-note { font-family: var(--serif); }
+.task { border-top: 1px dashed var(--line); }
+.task input { accent-color: var(--ox); }
+.t-tag { font-family: var(--mono); }
+.t-text { font-size: 15px; color: var(--ink); }
+.task.done .t-text { color: var(--muted); text-decoration-color: var(--faint); }
+.foot { font-family: var(--serif); font-style: italic; font-size: 13px; text-align: center; }
+
+/* ---- commute ---- */
+.seg { margin: 16px 12px 0; border-radius: 13px; background: #E6DCC9; border: 1px solid var(--edge); box-shadow: var(--pressed); padding: 3px; gap: 3px; }
+.seg button { border-radius: 10px; color: var(--muted); }
+.seg button.active { background: var(--panel) !important; box-shadow: var(--raised); color: var(--ox); }
+.pick-top { border-bottom: 1px dashed var(--line); }
+.pick-type, .lib-tag { font-family: var(--mono); }
+.pick-title { font-family: var(--display); font-style: italic; font-size: 24px; }
+.pick-by, .lib-sub { font-family: var(--mono); }
+.pick-why { font-size: 14.5px; color: var(--dim); }
+.open { border-radius: 9px; background: var(--ox) !important; color: #FAF5EA !important; box-shadow: 0 2px 0 #5E1D19; }
+.open:active { transform: translateY(2px); box-shadow: none; }
+
+/* ---- systems ---- */
+.intro { text-align: center; color: var(--dim); font-size: 16.5px; margin: 18px 24px 6px; }
+.sys { margin: 10px 12px 0; border-radius: 15px; background: var(--panel); border: 1px solid var(--edge); box-shadow: var(--raised); }
+.sys-h { border-bottom: 1px dashed var(--line); }
+.sys-n { font-family: var(--display); font-style: italic; color: var(--ox); font-size: 19px; }
+.sys-t { font-family: var(--display); font-size: 20px; }
+.sys-d, .sys li { color: var(--soft); font-size: 15px; }
+.sys li::before { content: '●'; color: var(--ox); font-size: 8px; top: 7px; }
+.say { color: var(--dim); }
+.floors th { font-family: var(--mono); color: var(--ox); }
+.floors td { border-top: 1px dashed var(--line); font-size: 14px; }
+.floors td.f { color: var(--ox); font-style: italic; }
+.core { margin: 16px 12px 0; border-radius: 15px; background: #E6DCC9; border: 1px solid var(--edge); box-shadow: var(--pressed); }
+.core small { font-family: var(--mono); color: var(--ox); }
+.core p { font-family: var(--display); font-style: italic; font-size: 22px; color: var(--ink); }
+
+/* ---- bottom console strip ---- */
+.nav {
+  background: linear-gradient(180deg, #F6F0E3, #EADFCB); border-top: 1px solid var(--edge);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 -4px 14px -6px rgba(90,65,35,.25);
+}
+.nav button { color: var(--faint); position: relative; }
+.nav .lbl { font-family: var(--mono); }
+.nav button.active { color: var(--ox); }
+.nav button.active .ico { color: var(--ox); }
+.nav button::after {
+  content: ''; position: absolute; top: 7px; width: 5px; height: 5px; border-radius: 50%;
+  background: #D8CCB6; box-shadow: inset 0 1px 1px rgba(90,65,35,.3);
+}
+.nav button.active::after { background: var(--ox-lit); box-shadow: 0 0 6px 1px rgba(178,58,46,.6); }
+.nav .ico { margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<main>
+  <section class="view" id="v-today"></section>
+  <section class="view" id="v-week"></section>
+  <section class="view" id="v-prep"></section>
+  <section class="view" id="v-commute"></section>
+  <section class="view" id="v-systems"></section>
+</main>
+
+<nav class="nav" id="nav">
+  <button data-v="today"   style="--accent:var(--faith)"><span class="ico">☀</span><span class="lbl">Today</span></button>
+  <button data-v="week"    style="--accent:var(--music)"><span class="ico">▦</span><span class="lbl">Week</span></button>
+  <button data-v="prep"    style="--accent:var(--quant)"><span class="ico">◎</span><span class="lbl">Prep</span></button>
+  <button data-v="commute" style="--accent:var(--music)"><span class="ico">⇄</span><span class="lbl">Commute</span></button>
+  <button data-v="systems" style="--accent:var(--faith)"><span class="ico">∞</span><span class="lbl">Systems</span></button>
+</nav>
+
+<script>
+(function () {
+/* ================= storage ================= */
+function load(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+var now = new Date();
+var DAY_IDS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+var todayId = DAY_IDS[now.getDay()];
+var todayStamp = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate();
+
+/* ================= shared data ================= */
+var P = {
+  wake: ["Wake", "#9A8E7C"], faith: ["Faith", "#6E4FB0"], quant: ["Quant", "#2F5E8C"], music: ["Music", "#C2622D"],
+  ready: ["Ready", "#9A8E7C"], commute: ["Commute", "#3F6A86"], commute_music: ["Commute", "#A0522D"],
+  work: ["Work", "#A8811F"], gym: ["Gym", "#5A8A3C"], eat: ["Eat", "#9A8E7C"], rel: ["People", "#B24A6A"], rest: ["Rest", "#8C8070"]
+};
+
+/* ================= TODAY (morning checklist) ================= */
+var DAY_TYPE = { mon: "gym", tue: "rest", wed: "gym", thu: "rest", fri: "gym", sat: "weekend", sun: "sunday" };
+var TYPE_META = {
+  gym:     ["Gym Day", "#5A8A3C", "rgba(90,138,60,.07)"],
+  rest:    ["Rest Day", "#2F5E8C", "rgba(47,94,140,.07)"],
+  weekend: ["Weekend", "#C2622D", "rgba(194,98,45,.07)"],
+  sunday:  ["Sunday", "#6E4FB0", "rgba(110,79,176,.07)"]
+};
+var ROUTINES = {
+  gym: [
+    ["wake", "wake", "Wake up — water, no phone", "6:30am"],
+    ["faith", "faith", "Short devotional / prayer", "6:30–6:45am"],
+    ["ready", "ready", "Shower, eat, get ready", "6:45–7:30am"],
+    ["cycle", "commute", "Cycle to station", "7:30–7:45am"],
+    ["train", "commute", "Train → quant listening", "8:00–9:00am"]
+  ],
+  rest: [
+    ["wake", "wake", "Wake up slow — coffee, no phone", "6:15am"],
+    ["faith", "faith", "Devotional / Word / prayer", "6:30–7:00am"],
+    ["quant", "quant", "Morning quant session", "7:00–7:30am"],
+    ["ready", "ready", "Get ready, out the door", "7:30–7:45am"],
+    ["cycle", "commute", "Cycle to station", "7:45am"],
+    ["train", "commute", "Train → quant listening", "8:00–9:00am"]
+  ],
+  weekend: [
+    ["wake", "wake", "Slower start — earn the rest", "8:00am"],
+    ["faith", "faith", "Devotional / Word / prayer", "8:00–8:30am"],
+    ["eat", "ready", "Breakfast — no rush", "8:30–9:00am"],
+    ["quant", "quant", "Quant prep (optional)", "9:00–11:00am"],
+    ["music", "music", "Main music block 🎵", "11:00am–3:00pm"]
+  ],
+  sunday: [
+    ["wake", "wake", "Wake up — it's Sunday", "Morning"],
+    ["church", "faith", "Church / worship", "Morning"],
+    ["reflect", "faith", "Prayer / reflection", "After church"],
+    ["family", "rel", "Family time", "Afternoon"],
+    ["plan", "rest", "15-min Sunday planning", "Evening"]
+  ]
+};
+var todayType = DAY_TYPE[todayId];
+function ckKey() { return "hub_morning_" + todayStamp + "_" + todayType; }
+var checked = load(ckKey(), {});
+
+function greeting() { var h = now.getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; }
+
+function renderToday() {
+  var m = TYPE_META[todayType], items = ROUTINES[todayType];
+  var done = items.filter(function (i) { return checked[i[0]]; }).length, pct = Math.round(done / items.length * 100);
+  var h = [];
+  h.push('<header class="hdr"><div class="hdr-glow" style="background:radial-gradient(ellipse at 0% 100%,' + m[2] + ' 0%,transparent 70%)"></div>' +
+    '<p class="eyebrow">' + greeting() + ', Stephen</p><h1>' + m[0] + ' Morning</h1>' +
+    '<p class="hdr-sub">' + now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) + '</p></header>');
+  h.push('<div class="pills">' + Object.keys(TYPE_META).map(function (t) {
+    var on = t === todayType;
+    return '<button class="pill' + (on ? ' active' : '') + '" style="' + (on ? 'background:' + TYPE_META[t][1] : '') + '" data-type="' + t + '">' + TYPE_META[t][0] + '</button>';
+  }).join("") + '</div>');
+  h.push('<div class="progress"><div class="bar"><i style="width:' + pct + '%;background:' + m[1] + '"></i></div><p>' + done + ' of ' + items.length + ' complete</p></div>');
+  h.push('<div class="stack" style="margin-top:8px">');
+  items.forEach(function (it) {
+    var c = P[it[1]][1], on = !!checked[it[0]];
+    h.push('<button class="check' + (on ? ' done' : '') + '" data-ck="' + it[0] + '" style="border-left:3px solid ' + c + '">' +
+      '<span class="circ" style="border-color:' + (on ? c : c + '55') + ';background:' + (on ? c : 'transparent') + '">' + (on ? '✓' : '') + '</span>' +
+      '<span style="flex:1;min-width:0"><span class="b-note" style="display:block">' + esc(it[2]) + '</span><span class="b-time">' + it[3] + '</span></span>' +
+      '<span class="tag" style="color:' + c + '">' + P[it[1]][0] + '</span></button>');
+  });
+  h.push('</div>');
+  if (done === items.length) h.push('<div class="banner"><div class="big">🙏</div><div class="t">Morning locked in.</div><div class="s">Go be great today, Stephen.</div></div>');
+  h.push('<button class="ghost-btn" data-reset="1">Reset</button>');
+  document.getElementById("v-today").innerHTML = h.join("");
+}
+
+/* ================= WEEK (schedule) ================= */
+var DAYS = [
+  ["mon", "MON", "Monday", "gym", "Gym Day"], ["tue", "TUE", "Tuesday", "music", "Music Day"],
+  ["wed", "WED", "Wednesday", "gym", "Gym Day"], ["thu", "THU", "Thursday", "music", "Music Day"],
+  ["fri", "FRI", "Friday", "gym", "Gym Day"], ["sat", "SAT", "Saturday", "music", "Music Day"],
+  ["sun", "SUN", "Sunday", "rest", "Rest Day"]
+];
+var DTYPE_C = { gym: "#5A8A3C", music: "#C2622D", rest: "#6E4FB0" };
+var GYM_AM = [
+  ["6:30am", "wake", "Wake up — water, no phone"], ["6:30–6:45am", "faith", "Short devotional / prayer", "faith"],
+  ["6:45–7:30am", "ready", "Shower, eat, get ready"], ["7:30–7:45am", "commute", "Cycle to station"],
+  ["8:00–9:00am", "commute", "Train → quant listening (podcasts / lectures)"]
+];
+var REST_AM = [
+  ["6:15am", "wake", "Wake up slow — coffee, no phone"], ["6:30–7:00am", "faith", "Devotional / Word / prayer", "faith"],
+  ["7:00–7:30am", "quant", "Morning quant session — prime the mind"], ["7:30–7:45am", "ready", "Get ready, out the door"],
+  ["7:45–7:55am", "commute", "Cycle to station"], ["8:00–9:00am", "commute", "Train → quant listening (podcasts / lectures)"]
+];
+var GYM_PM = function (last) {
+  return [["5:00–6:00pm", "commute_music", "Train home → intentional music listening"], ["6:00–7:15pm", "gym", "Gym near station"],
+    ["7:30–8:00pm", "eat", "Home — eat & decompress"], ["8:00–9:30pm", "quant", "Quant prep session (shorter)"], ["9:30pm+", "rel", last]];
+};
+var MUSIC_PM = [
+  ["5:00–6:00pm", "commute_music", "Train home → intentional music listening 🎵"], ["6:30–8:00pm", "quant", "Quant prep session"],
+  ["8:00–10:00pm", "music", "Music session 🎵", "music"], ["10:00pm+", "rest", "Wind down & sleep"]
+];
+var SCHED = {
+  mon: { am: GYM_AM, pm: GYM_PM("Girlfriend / wind down") },
+  tue: { am: REST_AM, pm: MUSIC_PM },
+  wed: { am: GYM_AM, pm: GYM_PM("Family / rest") },
+  thu: { am: REST_AM, pm: MUSIC_PM },
+  fri: { am: GYM_AM, pm: [["5:00–6:00pm", "commute_music", "Train home → decompress, music listening"], ["6:00–7:15pm", "gym", "Gym near station"], ["7:30pm+", "rel", "Girlfriend / family — protected evening"]] },
+  sat: { am: [["8:00am", "wake", "Slower start — earn the rest"], ["8:00–8:30am", "faith", "Devotional / Word / prayer", "faith"], ["8:30–9:00am", "eat", "Breakfast — no rush"], ["9:00–11:00am", "quant", "Quant prep (optional top-up)"]],
+         pm: [["11:00am–3:00pm", "music", "Main music block 🎵 — producing, recording, writing", "music"], ["3:00–4:00pm", "eat", "Break / eat"], ["4:00pm+", "rel", "Girlfriend / social / family"]] },
+  sun: { am: [["Morning", "faith", "Church / worship", "faith"], ["After church", "faith", "Prayer / reflection / rest in God"]],
+         pm: [["Afternoon", "rel", "Family time"], ["Early evening", "rest", "Rest — no quant, no music, no pressure"], ["Evening", "rest", "15-min Sunday planning for the week ahead"]] }
+};
+var TOTALS = [
+  ["quant", "Quant", "9–12 hrs (+ commute listening)"], ["music", "Music", "5–7 hrs (+ commute listening)"],
+  ["gym", "Gym", "3 sessions (Mon, Wed, Fri)"], ["faith", "Faith", "Daily devotional + Sunday"],
+  ["rel", "Relationships", "Fri eve + Sat eve + Sun"]
+];
+var weekDay = todayId;
+
+function blocks(list) {
+  return list.map(function (b) {
+    var c = P[b[1]][1];
+    return '<div class="block' + (b[3] ? ' hl-' + b[3] : '') + '" style="border-left:3px solid ' + c + '"><div class="block-left"><span class="dot" style="background:' + c + '"></span>' +
+      '<div><div class="b-note">' + esc(b[2]) + '</div><div class="b-time">' + b[0] + '</div></div></div><span class="tag" style="color:' + c + '">' + P[b[1]][0] + '</span></div>';
+  }).join("");
+}
+function renderWeek() {
+  var d = DAYS.filter(function (x) { return x[0] === weekDay; })[0], s = SCHED[weekDay], sun = weekDay === "sun";
+  var h = [];
+  h.push('<header class="hdr"><div class="hdr-glow" style="background:radial-gradient(ellipse at 20% 50%,rgba(232,120,57,.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 50%,rgba(47,94,140,.08) 0%,transparent 60%)"></div>' +
+    '<p class="eyebrow">Weekly Framework</p><h1>The Five Pillars</h1><p class="hdr-sub">Finance · Music · Body · Relationships · Faith</p></header>');
+  h.push('<div class="chips">' + DAYS.map(function (x) {
+    return '<button class="chip' + (x[0] === weekDay ? ' active' : '') + '" data-day="' + x[0] + '">' + x[1] + '<span class="ind" style="background:' + DTYPE_C[x[3]] + '"></span></button>';
+  }).join("") + '</div>');
+  h.push('<div class="day-head"><h2>' + d[2] + (d[0] === todayId ? ' <span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--muted)">· TODAY</span>' : '') + '</h2>' +
+    '<span class="badge" style="background:' + DTYPE_C[d[3]] + '1F;color:' + DTYPE_C[d[3]] + '">' + d[4] + '</span></div>');
+  h.push('<div class="section-label">' + (sun ? 'Sunday' : 'Morning') + '</div><div class="stack">' + blocks(s.am) + '</div>');
+  h.push('<div class="section-label">' + (sun ? 'Afternoon & Evening' : 'Evening') + '</div><div class="stack">' + blocks(s.pm) + '</div>');
+  h.push('<div class="section-label">Weekly Totals</div><div class="card">' + TOTALS.map(function (t) {
+    return '<div class="row"><span class="row-l"><span class="dot" style="background:' + P[t[0]][1] + '"></span>' + t[1] + '</span><span class="row-r">' + t[2] + '</span></div>';
+  }).join("") + '</div>');
+  document.getElementById("v-week").innerHTML = h.join("");
+}
+
+/* ================= PREP (TaCC tracker) ================= */
+var TAG = { course: ["Course", "#2F5E8C"], build: ["Build", "#2E7D73"], practice: ["Practice", "#B07A1E"], career: ["Career", "#6E4FB0"] };
+var WEEKS = [
+  { n: "Weekend", title: "Close out Course 1", dates: "Sat 10 – Sun 11 Oct", start: [2026, 9, 10], tasks: [
+    ["w0a", "course", "Finish Course 1 Week 3: logistic regression, decision boundary, regularisation"],
+    ["w0b", "practice", "Redo the Week 3 lab from a blank notebook, without looking"]] },
+  { n: "Week 1", title: "Neural nets + own the features", dates: "12 – 18 Oct", start: [2026, 9, 12], tasks: [
+    ["w1a", "course", "Course 2 Week 1: neural network basics, forward propagation"],
+    ["w1b", "build", "Rewrite features.py yourself: z-scores, rolling z-score, hour flags"],
+    ["w1c", "career", "Send the follow-up message to your TaCC contact"],
+    ["w1d", "practice", "2 SQL problems (LeetCode, window functions)"]] },
+  { n: "Week 2", title: "Training models + own the detector", dates: "19 – 25 Oct", start: [2026, 9, 19], tasks: [
+    ["w2a", "course", "Course 2 Week 2: training, activations, softmax"],
+    ["w2b", "build", "Rewrite the Isolation Forest class in models.py yourself"],
+    ["w2c", "practice", "Explain how Isolation Forest works out loud, no notes, under 60 seconds"],
+    ["w2d", "practice", "2 pandas problems, 20-minute timer each"]] },
+  { n: "Week 3", title: "Evaluate properly", dates: "26 Oct – 1 Nov", start: [2026, 9, 26], tasks: [
+    ["w3a", "course", "Course 2 Week 3: bias/variance, error analysis, precision/recall on skewed data"],
+    ["w3b", "build", "Add a train/test split by date to the anomaly project and re-report metrics"],
+    ["w3c", "build", "Plot precision and recall across thresholds; add the chart to the README"],
+    ["w3d", "practice", "2 SQL problems"]] },
+  { n: "Week 4", title: "Explain and serve", dates: "2 – 8 Nov", start: [2026, 10, 2], tasks: [
+    ["w4a", "build", "Add SHAP explanations for flagged trades"],
+    ["w4b", "build", "Build the FastAPI POST /score endpoint with tests"],
+    ["w4c", "build", "Update the README with new results; anomaly project v1 done"],
+    ["w4d", "practice", "Record a 3-minute walkthrough of the project"]] },
+  { n: "Week 5", title: "Trees, XGBoost, real fraud data", dates: "9 – 15 Nov", start: [2026, 10, 9], tasks: [
+    ["w5a", "course", "Course 2 Week 4: decision trees, random forests, XGBoost"],
+    ["w5b", "build", "Fraud project: download Kaggle credit card fraud data, EDA notebook"],
+    ["w5c", "build", "Fraud project: logistic regression baseline, record PR-AUC"],
+    ["w5d", "practice", "2 pandas problems"]] },
+  { n: "Week 6", title: "Ship project 2, start applying", dates: "16 – 22 Nov", start: [2026, 10, 16], tasks: [
+    ["w6a", "build", "Fraud project: XGBoost, class imbalance handling, threshold tuning"],
+    ["w6b", "build", "Fraud project: README with results and trade-offs; push to GitHub"],
+    ["w6c", "career", "Add both projects to your CV with real numbers"],
+    ["w6d", "career", "Submit 2 applications (e.g. Barclays Fraud Data Scientist, Chase UK Fraud DS)"]] },
+  { n: "Week 7", title: "Anomaly theory + kdb+ setup", dates: "23 – 29 Nov", start: [2026, 10, 23], tasks: [
+    ["w7a", "course", "Course 3 Week 1: anomaly detection with Gaussian models"],
+    ["w7b", "build", "Implement the Gaussian detector from scratch; compare it with Isolation Forest"],
+    ["w7c", "build", "kdb+ project: design the trade/quote schema; generate synthetic tick data in q"],
+    ["w7d", "practice", "2 SQL problems"]] },
+  { n: "Week 8", title: "Ship the kdb+ surveillance pipeline", dates: "30 Nov – 6 Dec", start: [2026, 10, 30], tasks: [
+    ["w8a", "build", "Inject wash-trade or spoofing patterns into the tick data"],
+    ["w8b", "build", "Compute windowed features in q; pull into Python with PyKX"],
+    ["w8c", "build", "Train and evaluate a detector; README; push to GitHub"],
+    ["w8d", "career", "Submit 2 more applications"]] },
+  { n: "Week 9", title: "Shore up, start NLP", dates: "7 – 13 Dec", start: [2026, 11, 7], tasks: [
+    ["w9a", "course", "Revisit the 2 course topics you feel weakest on; redo their labs from blank"],
+    ["w9b", "build", "NLP screener: score news headlines with FinBERT for adverse-media signals"],
+    ["w9c", "practice", "2 pandas problems"]] },
+  { n: "Week 10", title: "Polish the portfolio", dates: "14 – 20 Dec", start: [2026, 11, 14], tasks: [
+    ["w10a", "build", "Finish the NLP screener MVP and README"],
+    ["w10b", "build", "Pin all four repos on your GitHub profile; tidy every README"],
+    ["w10c", "career", "Update LinkedIn (turn off activity broadcasts first)"]] },
+  { n: "Week 11", title: "Light week: tell the stories", dates: "21 – 27 Dec", start: [2026, 11, 21], note: "Christmas week. Keep it light.", tasks: [
+    ["w11a", "practice", "Write a 90-second explanation for each project"],
+    ["w11b", "practice", "Say each one out loud three times"]] },
+  { n: "Week 12", title: "Interview-ready", dates: "28 Dec – 3 Jan", start: [2026, 11, 28], tasks: [
+    ["w12a", "practice", "Answer the 10 project interview questions out loud"],
+    ["w12b", "practice", "One timed coding session: 2 unseen problems in 45 minutes"],
+    ["w12c", "practice", "One mock interview (Pramp or a friend)"],
+    ["w12d", "career", "Apply to your remaining target roles"]] }
+];
+var PREP_KEY = "tacc-tracker-done";
+var prepDone = load(PREP_KEY, {});
+var prepScrolled = false;
+function curWeek() { var idx = 0; WEEKS.forEach(function (w, i) { if (now >= new Date(w.start[0], w.start[1], w.start[2])) idx = i; }); return idx; }
+
+function renderPrep() {
+  var total = 0, done = 0, cur = curWeek(), h = [];
+  WEEKS.forEach(function (w) { w.tasks.forEach(function (t) { total++; if (prepDone[t[0]]) done++; }); });
+  var pct = Math.round(done / total * 100);
+  h.push('<header class="hdr"><div class="hdr-glow" style="background:radial-gradient(ellipse at 100% 0%,rgba(47,94,140,.1) 0%,transparent 60%)"></div>' +
+    '<p class="eyebrow">Oct 2026 – Jan 2027 · TaCC associate</p><h1>Prep Tracker</h1>' +
+    '<p class="hdr-sub">12 weeks · 4 projects · interview practice</p></header>');
+  h.push('<div class="stats"><div class="stat"><b>' + done + '/' + total + '</b><span>Tasks</span></div><div class="stat"><b>' + pct + '%</b><span>Complete</span></div><div class="stat"><b>' + WEEKS[cur].n + '</b><span>You are here</span></div></div>');
+  h.push('<div style="padding:0 20px"><div class="bar"><i style="width:' + pct + '%;background:var(--gym)"></i></div></div>');
+  h.push('<div class="legend">' + Object.keys(TAG).map(function (k) { return '<span><i class="dot" style="background:' + TAG[k][1] + '"></i>' + TAG[k][0] + '</span>'; }).join("") + '</div>');
+  h.push('<div class="rhythm"><span><b>Mon–Thu</b> 90 min: half course, half build</span><span><b>Sat</b> 3-hour build block</span><span><b>Fri &amp; Sun</b> off</span></div>');
+  WEEKS.forEach(function (w, i) {
+    var wd = w.tasks.filter(function (t) { return prepDone[t[0]]; }).length;
+    h.push('<div class="week' + (i === cur ? ' now" id="prep-now' : '') + '"><div class="wk-top"><span class="wk-n">' + w.n + '</span>' + (i === cur ? '<span class="wk-now">This week</span>' : '') +
+      '<span class="wk-meta">' + w.dates + ' · ' + wd + '/' + w.tasks.length + '</span></div><h2 class="wk-title">' + esc(w.title) + '</h2>' + (w.note ? '<p class="wk-note">' + esc(w.note) + '</p>' : ''));
+    w.tasks.forEach(function (t) {
+      var on = !!prepDone[t[0]];
+      h.push('<label class="task' + (on ? ' done' : '') + '"><input type="checkbox" data-prep="' + t[0] + '"' + (on ? ' checked' : '') + '>' +
+        '<span><span class="t-tag" style="color:' + TAG[t[1]][1] + '">' + TAG[t[1]][0] + '</span><span class="t-text">' + esc(t[2]) + '</span></span></label>');
+    });
+    h.push('</div>');
+  });
+  h.push('<p class="foot">Started 9 Oct 2026. Rest days count as progress.</p>');
+  document.getElementById("v-prep").innerHTML = h.join("");
+}
+
+/* ================= COMMUTE ================= */
+function sp(q) { return "https://open.spotify.com/search/" + encodeURIComponent(q); }
+var QUANT_PICKS = [
+  ["Probability & stats for ML", "StatQuest with Josh Starmer", "YouTube", "Distributions, Bayes and hypothesis testing made genuinely clear. Perfect for a 45-minute ride.", "https://www.youtube.com/@statquest"],
+  ["Odd Lots", "Bloomberg", "Podcast", "Markets and finance explained through practitioner interviews. Builds context for the finance side of fraud and AML.", sp("Odd Lots")],
+  ["Essence of Linear Algebra", "3Blue1Brown", "YouTube", "Visual intuition for the maths behind ML. One episode per commute changes how you see data.", "https://www.youtube.com/@3blue1brown"],
+  ["Machine Learning Street Talk", "MLST", "Podcast", "Deep technical conversations with ML researchers. Stretches your thinking past the textbook.", sp("Machine Learning Street Talk")],
+  ["Neural Networks: Zero to Hero", "Andrej Karpathy", "YouTube", "Builds neural nets from scratch. Pairs well with Course 2 of the Ng specialisation.", "https://www.youtube.com/@AndrejKarpathy"],
+  ["Practical AI", "Changelog", "Podcast", "Applied ML in production, which is exactly the kind of role you're aiming for.", sp("Practical AI podcast")],
+  ["Neural networks series", "3Blue1Brown", "YouTube", "Backprop and gradient descent, visualised. Good review before an evening build session.", "https://www.youtube.com/@3blue1brown"]
+];
+var MUSIC_PICKS = [
+  ["Dissect", "Cole Cuchna", "Podcast", "Season-long album deep dives. Trains your ear to hear intentional production choices.", sp("Dissect podcast")],
+  ["Song Exploder", "Hrishikesh Hirway", "Podcast", "Artists break down a song stem by stem. In 15 minutes you hear how a track was built.", sp("Song Exploder")],
+  ["Tetragrammaton", "Rick Rubin", "Podcast", "Creativity, process and protecting your artistic voice, from one of the great producers.", sp("Tetragrammaton Rick Rubin")],
+  ["Produce Like A Pro", "Warren Huart", "YouTube", "Practical recording and mixing techniques to prime your mind before a session.", "https://www.youtube.com/@ProduceLikeAPro"],
+  ["Pensado's Place", "Dave Pensado", "YouTube", "World-class mix engineers interviewed. Every episode has a technique you can use.", "https://www.youtube.com/@PensadosPlace"],
+  ["The Creative Independent", "Kickstarter", "Reading", "Working artists on sustaining a creative practice alongside real life.", "https://thecreativeindependent.com"],
+  ["Switched On Pop", "Nate Sloan & Charlie Harding", "Podcast", "Music theory through popular songs. Ideal for decompressing on the ride home.", sp("Switched On Pop")]
+];
+var QUANT_LIB = [
+  ["Podcasts", [["Odd Lots", "Markets & finance interviews", sp("Odd Lots")], ["Machine Learning Street Talk", "Deep ML research conversations", sp("Machine Learning Street Talk")], ["Practical AI", "Applied ML in production", sp("Practical AI podcast")], ["Lex Fridman Podcast", "AI, ML & technology depth", sp("Lex Fridman Podcast")]]],
+  ["YouTube", [["StatQuest", "Stats & ML made visual", "https://www.youtube.com/@statquest"], ["3Blue1Brown", "Maths intuition", "https://www.youtube.com/@3blue1brown"], ["Andrej Karpathy", "Neural networks from scratch", "https://www.youtube.com/@AndrejKarpathy"], ["Two Minute Papers", "ML research summarised", "https://www.youtube.com/@TwoMinutePapers"]]],
+  ["Reading", [["Towards Data Science", "Applied ML articles", "https://towardsdatascience.com"], ["Distill", "Visual ML explanations", "https://distill.pub"], ["Python for Finance", "Yves Hilpisch · O'Reilly", "https://www.oreilly.com/library/view/python-for-finance/9781492024323/"]]]
+];
+var MUSIC_LIB = [
+  ["Podcasts", [["Song Exploder", "Artists break down their songs", sp("Song Exploder")], ["Dissect", "Album deep dives", sp("Dissect podcast")], ["Tetragrammaton", "Rick Rubin on creativity", sp("Tetragrammaton Rick Rubin")], ["Switched On Pop", "Theory through pop songs", sp("Switched On Pop")]]],
+  ["YouTube", [["Produce Like A Pro", "Recording & mixing", "https://www.youtube.com/@ProduceLikeAPro"], ["Pensado's Place", "World-class mix engineers", "https://www.youtube.com/@PensadosPlace"], ["Andrew Huang", "Production creativity", "https://www.youtube.com/@andrewhuang"]]],
+  ["Reading", [["The Creative Independent", "Sustaining a creative practice", "https://thecreativeindependent.com"], ["Sound On Sound", "Production & recording features", "https://www.soundonsound.com"], ["The War of Art", "Steven Pressfield · on resistance", "https://stevenpressfield.com/books/the-war-of-art/"]]]
+];
+var cMode = now.getHours() >= 14 ? "music" : "quant";
+var cTab = "daily";
+
+function renderCommute() {
+  var q = cMode === "quant", col = q ? "#2F5E8C" : "#C2622D", bg = q ? "rgba(47,94,140,.12)" : "rgba(194,98,45,.12)";
+  var h = [];
+  h.push('<header class="hdr"><div class="hdr-glow" style="background:radial-gradient(ellipse at 0% 100%,' + bg + ' 0%,transparent 60%)"></div>' +
+    '<p class="eyebrow">Commute Companion</p><h1>' + (q ? 'Morning' : 'Evening') + ' Commute</h1><p class="hdr-sub">' + (q ? 'Hatfield → London · quant mode' : 'London → Hatfield · music mode') + '</p></header>');
+  h.push('<div class="seg"><button class="' + (q ? 'active' : '') + '" data-cmode="quant" style="' + (q ? 'background:rgba(47,94,140,.12)' : '') + '"><span class="e">📈</span>Morning</button>' +
+    '<button class="' + (!q ? 'active' : '') + '" data-cmode="music" style="' + (!q ? 'background:rgba(194,98,45,.12)' : '') + '"><span class="e">🎵</span>Evening</button></div>');
+  h.push('<div class="chips"><button class="chip' + (cTab === "daily" ? ' active' : '') + '" data-ctab="daily" style="flex:1">TODAY\'S PICK</button><button class="chip' + (cTab === "lib" ? ' active' : '') + '" data-ctab="lib" style="flex:1">LIBRARY</button></div>');
+  if (cTab === "daily") {
+    var picks = q ? QUANT_PICKS : MUSIC_PICKS, p = picks[now.getDay() % picks.length];
+    h.push('<div class="section-label">Today\'s Pick</div><div class="card" style="border-left:3px solid ' + col + '">' +
+      '<div class="pick-top"><div class="pick-type" style="color:' + col + '">' + p[2] + '</div><div class="pick-title">' + esc(p[0]) + '</div><div class="pick-by">' + esc(p[1]) + '</div></div>' +
+      '<div class="pick-bot"><div class="pick-why">' + esc(p[3]) + '</div><a class="open" href="' + p[4] + '" target="_blank" rel="noopener" style="background:' + bg + ';color:' + col + '">Open →</a></div></div>');
+  } else {
+    (q ? QUANT_LIB : MUSIC_LIB).forEach(function (sec) {
+      h.push('<div class="section-label">' + sec[0] + '</div><div class="stack">' + sec[1].map(function (it) {
+        return '<a class="block lib" href="' + it[2] + '" target="_blank" rel="noopener" style="border-left:3px solid ' + col + '55"><div><div class="b-note">' + esc(it[0]) + '</div><div class="lib-sub">' + esc(it[1]) + '</div></div><span class="lib-tag" style="background:' + bg + ';color:' + col + '">' + sec[0].replace(/s$/, "") + '</span></a>';
+      }).join("") + '</div>');
+    });
+  }
+  document.getElementById("v-commute").innerHTML = h.join("");
+}
+
+/* ================= SYSTEMS ================= */
+function renderSystems() {
+  var dot = function (c) { return '<span class="dot" style="background:' + c + ';margin-right:7px;vertical-align:middle"></span>'; };
+  var card = function (n, t, body) { return '<div class="sys"><div class="sys-h"><span class="sys-n">' + n + '</span><span class="sys-t">' + t + '</span></div><div class="sys-b">' + body + '</div></div>'; };
+  var ul = function (items) { return '<ul>' + items.map(function (i) { return '<li>' + i + '</li>'; }).join("") + '</ul>'; };
+  var h = [];
+  h.push('<header class="hdr"><div class="hdr-glow" style="background:radial-gradient(ellipse at 50% 100%,rgba(110,79,176,.08) 0%,transparent 70%)"></div>' +
+    '<p class="eyebrow">How it holds together</p><h1>Systems</h1><p class="hdr-sub">Decide in advance · follow your own rules</p></header>');
+  h.push('<p class="intro">Decide in advance, so in the moment you\'re following your own rules rather than relying on willpower.</p>');
+  h.push(card("01", "Floors &amp; Standards",
+    '<p class="sys-d">The standard is a normal week. The floor is the minimum on a chaotic week. Hitting the floor counts as a win.</p>' +
+    '<table class="floors"><tr><th>Pillar</th><th>Standard</th><th>Floor</th></tr>' +
+    '<tr><td>' + dot("#6E4FB0") + 'Faith</td><td>Daily Word + Sunday</td><td class="f">Daily, even 5 min</td></tr>' +
+    '<tr><td>' + dot("#C2622D") + 'Music</td><td>Tue, Thu + Sat block</td><td class="f">1 session</td></tr>' +
+    '<tr><td>' + dot("#2F5E8C") + 'Quant</td><td>9–12 hrs</td><td class="f">4 hrs</td></tr>' +
+    '<tr><td>' + dot("#5A8A3C") + 'Gym</td><td>3 sessions</td><td class="f">2 sessions</td></tr></table>'));
+  h.push(card("02", "Never Miss Twice", '<p class="sys-d">Missing once is life. Missing twice is the start of a new habit. After a miss, the next session is protected no matter what.</p>'));
+  h.push(card("03", "Built-in White Space", ul([
+    "Friday evening, Saturday evening and one open weekday evening stay unplanned on purpose.",
+    "Use them for friends, church community, rest, or catching up a missed session.",
+    "Midweek church commitments are part of the faith pillar, not extras."])));
+  h.push(card("04", "Rules for Invites", ul([
+    "Invites on Fri evening, Sat evening or your open evening get an easy yes.",
+    "On a protected slot, swap the session, don't skip it. It moves elsewhere that week.",
+    'Pause before accepting: <span class="say">"Let me check my week and come back to you."</span>',
+    'Offer another time: <span class="say">"Can\'t do Thursday, how about Saturday?"</span>'])));
+  h.push(card("05", "Rules for Energy", ul([
+    "Every session has a tired version. Quant → review. Music → listen back or arrange.",
+    "Commit to the first 10 minutes. Still flat after that? Stop, no guilt.",
+    "Eat around 4–5pm on gym days.",
+    "Bedtime around 10:30 to support the 6:15 starts."])));
+  h.push(card("06", "Sunday Planning", '<p class="sys-d">15 minutes on Sunday evening to check the template against the real week.</p>' + ul([
+    "Who am I seeing this week?", "Which days are busy, and which sessions need to move?", "Which days will run at the floor?"])));
+  h.push(card("07", "Make Bad Habits Inconvenient", ul([
+    "Phone charges outside the bedroom.", "Site blocker on during quant and music sessions.", "Make the good option the easy default."])));
+  h.push('<div class="core"><small>The Core Idea</small><p>Decide in advance. Follow your own rules.</p></div>');
+  document.getElementById("v-systems").innerHTML = h.join("");
+}
+
+/* ================= routing ================= */
+var RENDER = { today: renderToday, week: renderWeek, prep: renderPrep, commute: renderCommute, systems: renderSystems };
+var current = load("hub_view", "today");
+if (!RENDER[current]) current = "today";
+
+function show(v) {
+  current = v; save("hub_view", v);
+  document.querySelectorAll(".view").forEach(function (el) { el.classList.toggle("active", el.id === "v-" + v); });
+  document.querySelectorAll(".nav button").forEach(function (b) { b.classList.toggle("active", b.getAttribute("data-v") === v); });
+  RENDER[v]();
+  window.scrollTo(0, 0);
+  if (v === "prep" && !prepScrolled) {
+    prepScrolled = true;
+    var n = document.getElementById("prep-now");
+    if (n && curWeek() > 0) setTimeout(function () { n.scrollIntoView({ block: "start", behavior: "smooth" }); }, 60);
+  }
+}
+
+document.addEventListener("click", function (e) {
+  var t = e.target.closest("button, a");
+  if (!t) return;
+  var a;
+  if ((a = t.getAttribute("data-v"))) return show(a);
+  if ((a = t.getAttribute("data-ck"))) { checked[a] = !checked[a]; save(ckKey(), checked); return renderToday(); }
+  if ((a = t.getAttribute("data-type"))) { todayType = a; checked = load(ckKey(), {}); return renderToday(); }
+  if (t.getAttribute("data-reset")) { checked = {}; save(ckKey(), checked); return renderToday(); }
+  if ((a = t.getAttribute("data-day"))) { weekDay = a; return renderWeek(); }
+  if ((a = t.getAttribute("data-cmode"))) { cMode = a; return renderCommute(); }
+  if ((a = t.getAttribute("data-ctab"))) { cTab = a; return renderCommute(); }
+});
+document.addEventListener("change", function (e) {
+  var id = e.target.getAttribute && e.target.getAttribute("data-prep");
+  if (!id) return;
+  if (e.target.checked) prepDone[id] = true; else delete prepDone[id];
+  save(PREP_KEY, prepDone);
+  var y = window.scrollY; renderPrep(); window.scrollTo(0, y);
+});
+
+show(current);
+})();
+</script>
+</body>
+</html>
